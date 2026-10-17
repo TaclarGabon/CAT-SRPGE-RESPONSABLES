@@ -84,6 +84,19 @@ for(const [name,v] of totals){synth.addRow([name,v.a,v.b,v.m]);sr++}
 synth.addRow(['TOTAL',{formula:'SUM(B2:B'+(sr-1)+')'},{formula:'SUM(C2:C'+(sr-1)+')'},{formula:'SUM(D2:D'+(sr-1)+')'}]);
 synth.getRow(1).font={bold:true,color:{argb:'FFFFFFFF'}};synth.getRow(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF173857'}};
 synth.addRow([]);synth.addRow(['NOTE : montants déclarés, non certifiés par la banque.']);
-synth.addRow(['Répartition visuelle : un graphique circulaire sera ajouté dans une version ultérieure.']);const buff=await b.xlsx.writeBuffer();const blob=new Blob([buff],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='CAT-SRPGE-Registre-Collectif-V7.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(url),20000);msg('Registre Excel téléchargé. Il contient des données confidentielles : conserve-le dans un emplacement privé.','good')}catch(e){msg('Échec de la génération Excel.','bad')}};
+// Graphique circulaire intégré sous forme d'image (ExcelJS ne crée pas de graphiques natifs).
+if(totals.size){
+ const cv=document.createElement('canvas');cv.width=760;cv.height=480;
+ const g=cv.getContext('2d');g.fillStyle='#ffffff';g.fillRect(0,0,760,480);
+ g.fillStyle='#173857';g.font='bold 24px sans-serif';g.fillText('Répartition des actions déclarées',25,40);
+ const vals=[...totals.entries()].map(([name,v])=>({name,value:v.a})).filter(x=>x.value>0);
+ const total=vals.reduce((n,x)=>n+x.value,0);
+ const palette=['#2671B8','#39A69C','#E4A44D','#B270AB','#719F65','#E27576','#647CA2'];
+ let angle=-Math.PI/2;
+ if(total>0)vals.forEach((it,i)=>{const part=it.value/total*Math.PI*2;g.beginPath();g.moveTo(225,242);g.arc(225,242,162,angle,angle+part);g.closePath();g.fillStyle=palette[i%palette.length];g.fill();angle+=part});
+ vals.forEach((it,i)=>{const yy=104+i*32;g.fillStyle=palette[i%palette.length];g.fillRect(430,yy-13,16,16);g.fillStyle='#173857';g.font='15px sans-serif';g.fillText(it.name+' : '+it.value+' ('+(100*it.value/total).toFixed(1)+' %)',455,yy)});
+ const id=b.addImage({base64:cv.toDataURL('image/png'),extension:'png'});
+ synth.addImage(id,{tl:{col:5,row:1},ext:{width:760,height:480}});
+}const buff=await b.xlsx.writeBuffer();const blob=new Blob([buff],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='CAT-SRPGE-Registre-Collectif-V7.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(url),20000);msg('Registre Excel téléchargé. Il contient des données confidentielles : conserve-le dans un emplacement privé.','good')}catch(e){msg('Échec de la génération Excel.','bad')}};
 await auth.authStateReady();await setPersistence(auth,inMemoryPersistence);await signOut(auth);
 </script></body></html>
