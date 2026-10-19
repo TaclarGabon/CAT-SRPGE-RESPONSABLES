@@ -52,7 +52,8 @@ $('saveReview').onclick=async()=>{
  if(!['Pièces manquantes','Informations à préciser','Dossier conforme (test)','Dossier non validé'].includes(state))return;
  if(state==='Dossier conforme (test)'&&!confirm('Confirmer la conformité pour la démonstration uniquement ? Aucun paiement bancaire réel ne sera certifié.'))return;
  try{
- await set(ref(db,'controles/'+uid+'/operations/'+operationId),{etat:state,observation:note,misAJourLe:new Date().toISOString(),responsableUid:u.uid,responsableEmail:u.email||'',mode:'TEST'});
+ const previous=(await get(ref(db,'controles/'+uid+'/operations/'+operationId))).val()||{};
+ await set(ref(db,'controles/'+uid+'/operations/'+operationId),{...previous,etat:state,observation:note,misAJourLe:new Date().toISOString(),responsableUid:u.uid,responsableEmail:u.email||'',mode:'TEST'});
  $('reviewStatus').textContent='Décision enregistrée pour cette souscription.';
  readReview(uid)
  }catch(e){$('reviewStatus').textContent='Enregistrement refusé : vérifier les règles Firebase (aucune décision confirmée).'}
@@ -67,7 +68,9 @@ $('notifyShareholder').onclick=async()=>{
  if($('reviewState').value!==current.etat||$('reviewNote').value.trim()!==(current.observation||'')){
  $('reviewStatus').textContent='Les modifications ne sont pas enregistrées. Enregistre la décision avant d’aviser.';return}
  if(!confirm('Aviser cet actionnaire dans son espace personnel ? Aucun email externe ne sera envoyé pour le moment.'))return;
- await set(ref(db,'controles/'+uid+'/operations/'+operationId),{...current,aviseLe:new Date().toISOString(),avisePar:auth.currentUser.uid});
+ const now=new Date().toISOString();const history=Array.isArray(current.historiqueAvis)?current.historiqueAvis.slice(-99):[];
+ history.push({date:now,etat:current.etat,observation:current.observation||'',responsableUid:auth.currentUser.uid});
+ await set(ref(db,'controles/'+uid+'/operations/'+operationId),{...current,historiqueAvis:history,aviseLe:now,avisePar:auth.currentUser.uid});
  $('reviewStatus').textContent='Notification envoyée dans l’espace Actionnaire (email non activé).';
  }catch(e){$('reviewStatus').textContent='Notification non envoyée : vérifie les droits Firebase.'}
 };
